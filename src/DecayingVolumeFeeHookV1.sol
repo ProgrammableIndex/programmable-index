@@ -28,13 +28,13 @@ import { SwapParams } from "@uniswap/v4-core/src/types/PoolOperation.sol";
 /// @notice Programmable reference volume-fee kernel (ProgrammableVolumeFeeHookV2, `standard-amm` profile) with ONE change:
 ///         the project-selected total fee is a time schedule instead of a constant. It starts at `start` when the
 ///         canonical pool is registered, decays LINEARLY to `floor` over `decaySeconds`, then stays at `floor` forever.
-///         Fees are always charged on the quote (native ETH) side, in the same way and with the same split as the
-///         reference kernel: PROGRAMMABLE_HUNDREDTHS_OF_BIP (0.30%) to Programmable, the remainder to `projectFeeOwner`.
+///         Fees are always charged on the quote (native ETH) side, in the same way and with ONE further change:
+///         no Programmable share (PROGRAMMABLE_HUNDREDTHS_OF_BIP = 0), so the whole hook fee goes to `projectFeeOwner`.
 ///         Long-run cap: the `floor` (the fee forever after the decay window) is at most MAX_SELECTED_HUNDREDTHS_OF_BIP
-///         (5%), so the project share is at most 4.70% after launch. Launch window: `start` may be up to
+///         (5%). Launch window: `start` may be up to
 ///         MAX_LAUNCH_HUNDREDTHS_OF_BIP (25%) only if the schedule reaches the floor within MAX_LAUNCH_DECAY_SECONDS
-///         (300 s); the fee then only decreases, linearly, and can never rise again. This hook fee is separate from any fee Programmable's own routed
-///         trading charges off-chain/on its router; no router-fee waiver is claimed by this contract.
+///         (300 s); the fee then only decreases, linearly, and can never rise again. Programmable's platform fee is NOT collected by this hook:
+///         Programmable's router collects it exactly once (0.30% on routed trades), so there is no double charge and no waiver.
 /// @dev This is an unaudited, undeployed, one-pool reference accelerator. It deliberately reverts when an atomic
 ///      standard-AMM swap cannot fully fund both fee components. Batch, sponsored, custom-accounting and collateral
 ///      settlement require their own reviewed profile implementation; this contract does not pretend to implement them.
@@ -45,9 +45,9 @@ contract DecayingVolumeFeeHookV1 is BaseHook, IUnlockCallback, ReentrancyGuardTr
     using SafeCast for *;
 
     uint256 public constant RATE_DENOMINATOR = 1_000_000;
-    /// @notice Programmable platform share: 0.30% (current `programmable.ethereum-routed-native-fee.v2` policy value).
-    uint32 public constant PROGRAMMABLE_HUNDREDTHS_OF_BIP = 3000;
-    /// @notice The effective total can never drop below the platform share, so the project share is never negative.
+    /// @notice Programmable share charged by THIS hook: 0. Programmable's 0.30% platform fee is collected once, by its own router.
+    uint32 public constant PROGRAMMABLE_HUNDREDTHS_OF_BIP = 0;
+    /// @notice Minimum effective total hook fee (0.30%).
     uint32 public constant MINIMUM_EFFECTIVE_HUNDREDTHS_OF_BIP = 3000;
     /// @notice Hard cap on the long-run TOTAL fee (platform + project) after the launch window: 5%.
     uint32 public constant MAX_SELECTED_HUNDREDTHS_OF_BIP = 50_000;
