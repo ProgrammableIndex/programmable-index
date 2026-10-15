@@ -1,0 +1,52 @@
+--- src/DecayingVolumeFeeHookV1.sol (request 94fc4a51, commit 57268dd)
++++ src/DecayingVolumeFeeHookV1.sol (this request)
+@@ -28,13 +28,13 @@
+ /// @notice Programmable reference volume-fee kernel (ProgrammableVolumeFeeHookV2, `standard-amm` profile) with ONE change:
+ ///         the project-selected total fee is a time schedule instead of a constant. It starts at `start` when the
+ ///         canonical pool is registered, decays LINEARLY to `floor` over `decaySeconds`, then stays at `floor` forever.
+-///         Fees are always charged on the quote (native ETH) side, in the same way and with ONE further change:
+-///         no Programmable share (PROGRAMMABLE_HUNDREDTHS_OF_BIP = 0), so the whole hook fee goes to `projectFeeOwner`.
++///         Fees are always charged on the quote (native ETH) side, in the same way and with the same split as the
++///         reference kernel: PROGRAMMABLE_HUNDREDTHS_OF_BIP (0.30%) to Programmable, the remainder to `projectFeeOwner`.
+ ///         Long-run cap: the `floor` (the fee forever after the decay window) is at most MAX_SELECTED_HUNDREDTHS_OF_BIP
+-///         (5%). Launch window: `start` may be up to
++///         (5%), so the project share is at most 4.70% after launch. Launch window: `start` may be up to
+ ///         MAX_LAUNCH_HUNDREDTHS_OF_BIP (25%) only if the schedule reaches the floor within MAX_LAUNCH_DECAY_SECONDS
+-///         (300 s); the fee then only decreases, linearly, and can never rise again. Programmable's platform fee is NOT collected by this hook:
+-///         Programmable's router collects it exactly once (0.30% on routed trades), so there is no double charge and no waiver.
++///         (300 s); the fee then only decreases, linearly, and can never rise again. Programmable's 0.30% is enforced by this hook on every
++///         swap through any router and accrues as backed PoolManager native claims; anyone may trigger claimProgrammableFees(), which always pays PROGRAMMABLE_FEE_OWNER.
+ /// @dev This is an unaudited, undeployed, one-pool reference accelerator. It deliberately reverts when an atomic
+ ///      standard-AMM swap cannot fully fund both fee components. Batch, sponsored, custom-accounting and collateral
+ ///      settlement require their own reviewed profile implementation; this contract does not pretend to implement them.
+@@ -45,9 +45,9 @@
+     using SafeCast for *;
+ 
+     uint256 public constant RATE_DENOMINATOR = 1_000_000;
+-    /// @notice Programmable share charged by THIS hook: 0. Programmable's 0.30% platform fee is collected once, by its own router.
+-    uint32 public constant PROGRAMMABLE_HUNDREDTHS_OF_BIP = 0;
+-    /// @notice Minimum effective total hook fee (0.30%).
++    /// @notice Programmable platform share: 0.30% of the gross native leg of EVERY swap (any router, the initial buy included).
++    uint32 public constant PROGRAMMABLE_HUNDREDTHS_OF_BIP = 3000;
++    /// @notice The effective total can never drop below the platform share, so the project share is never negative.
+     uint32 public constant MINIMUM_EFFECTIVE_HUNDREDTHS_OF_BIP = 3000;
+     /// @notice Hard cap on the long-run TOTAL fee (platform + project) after the launch window: 5%.
+     uint32 public constant MAX_SELECTED_HUNDREDTHS_OF_BIP = 50_000;
+@@ -378,11 +378,12 @@
+         return _claimableLiability[canonicalPoolId][quoteCurrencyAddress][projectFeeOwner];
+     }
+ 
+-    function claimProgrammableFees(address recipient) external nonReentrant returns (uint256 amount) {
+-        if (msg.sender != PROGRAMMABLE_FEE_OWNER) revert UnauthorizedClaim(msg.sender, PROGRAMMABLE_FEE_OWNER);
+-        amount = _prepareClaim(recipient, PROGRAMMABLE_FEE_OWNER);
+-        _redeemQuote(recipient, amount);
+-        emit ProgrammableFeesClaimed(canonicalPoolId, quoteCurrencyAddress, PROGRAMMABLE_FEE_OWNER, recipient, amount);
++    /// @notice Permissionless: anybody may pay the gas, the whole accrued Programmable share always goes to the fixed
++    ///         PROGRAMMABLE_FEE_OWNER. There is no recipient argument and no other path to these claims.
++    function claimProgrammableFees() external nonReentrant returns (uint256 amount) {
++        amount = _prepareClaim(PROGRAMMABLE_FEE_OWNER, PROGRAMMABLE_FEE_OWNER);
++        _redeemQuote(PROGRAMMABLE_FEE_OWNER, amount);
++        emit ProgrammableFeesClaimed(canonicalPoolId, quoteCurrencyAddress, PROGRAMMABLE_FEE_OWNER, PROGRAMMABLE_FEE_OWNER, amount);
+     }
+ 
+     function claimProjectFees(address recipient) external nonReentrant returns (uint256 amount) {

@@ -1,60 +1,81 @@
-Solc 0.8.26 finished in 7.12s
-Compiler run successful!
-
-Ran 5 tests for test/ProgrammableRouterFeeProof.t.sol:ProgrammableRouterFeeProofTest
-[PASS] test_0_builder_matches_programmable_prepare_endpoint() (gas: 9455)
-[PASS] test_1_initial_buy_path() (gas: 24946)
+Ran 7 tests for test/ProgrammableNative30FeeProof.t.sol:ProgrammableNative30FeeProofTest
+[PASS] test_0_builder_matches_programmable_prepare() (gas: 17953)
+[PASS] test_1_initial_buy() (gas: 71273)
 Logs:
-  initial buy (launch tx, 0.06 ETH)
-    dev tokens                27626321401831448415566603
-    treasury platform fee     0
-    hook fee -> vault (wei)   3000000000000000
-    hook fee -> Programmable  0
+  initial buy (launch tx, 0.06 ETH, total fee 5%)
+    dev tokens                     27626321401831448415566603
+    hook -> Programmable (wei)     180000000000000
+    hook -> project vault (wei)    2820000000000000
+    router transfer to treasury    0
 
-[PASS] test_2_routed_buy_launch_window() (gas: 708707)
+[PASS] test_2_programmable_route_launch_window() (gas: 1591073)
 Logs:
-  routed buy at launch (0.05 ETH, hook 5%)
-    amount in (wei)           50000000000000000
-    received (wei)            21817980136936889759781104
-    treasury platform fee     150000000000000
-    hook fee -> vault (wei)   2492500000000000
-    hook fee -> Programmable  0
-    router call gas           256096
+  Programmable route buy, 0.05 ETH, launch window (total 5%)
+    gross native leg (wei)         50000000000000000
+    received (wei)                 21882153632026288520486787
+    hook -> Programmable (wei)     150000000000000
+    hook -> project vault (wei)    2350000000000000
+    router transfer to treasury    0
+    gas                            247600
+  Programmable route sell, half the bag, launch window (total 5%)
+    gross native leg (wei)         24020274352979752
+    received (wei)                 22819260635330765
+    hook -> Programmable (wei)     72060823058939
+    hook -> project vault (wei)    1128952894590048
+    router transfer to treasury    0
+    gas                            228273
 
-[PASS] test_3_routed_sell_launch_window() (gas: 1592112)
+[PASS] test_3_programmable_route_after_decay() (gas: 1549042)
 Logs:
-  setup buy
-    amount in (wei)           50000000000000000
-    received (wei)            21817980136936889759781104
-    treasury platform fee     150000000000000
-    hook fee -> vault (wei)   2492500000000000
-    hook fee -> Programmable  0
-    router call gas           256096
-  routed sell at launch (half the bag, hook 5%)
-    amount in (wei)           10908990068468444879890552
-    received (wei)            22681793465145454
-    treasury platform fee     68250130787799
-    hook fee -> vault (wei)   1197370715575434
-    hook fee -> Programmable  0
-    router call gas           219923
+  Programmable route buy, 1 ETH, after decay (total 3%)
+    gross native leg (wei)         1000000000000000000
+    received (wei)                 310954439676143393288800327
+    hook -> Programmable (wei)     3000000000000000
+    hook -> project vault (wei)    27000000000000000
+    router transfer to treasury    0
+    gas                            225187
+  Programmable route sell, whole bag, after decay (total 3%)
+    gross native leg (wei)         969999999999999998
+    received (wei)                 940900000000000000
+    hook -> Programmable (wei)     2909999999999999
+    hook -> project vault (wei)    26189999999999999
+    router transfer to treasury    0
+    gas                            234306
 
-[PASS] test_4_routed_buy_and_sell_after_decay() (gas: 1550157)
+[PASS] test_4_other_routers_pay_too() (gas: 2053541)
 Logs:
-  routed buy after decay (1 ETH, hook 3%)
-    amount in (wei)           1000000000000000000
-    received (wei)            310319286471969280121583341
-    treasury platform fee     3000000000000000
-    hook fee -> vault (wei)   29910000000000000
-    hook fee -> Programmable  0
-    router call gas           233635
-  routed sell after decay (whole bag, hook 3%)
-    amount in (wei)           310319286471969280121583341
-    received (wei)            935263068100000000
-    treasury platform fee     2814231899999999
-    hook fee -> vault (wei)   29012699999999999
-    hook fee -> Programmable  0
-    router call gas           225924
+  Uniswap Universal Router buy, 0.5 ETH
+    gross native leg (wei)         500000000000000000
+    received (wei)                 185068688413252730030553893
+    hook -> Programmable (wei)     1500000000000000
+    hook -> project vault (wei)    13500000000000000
+    router transfer to treasury    0
+    gas                            224862
+  Uniswap Universal Router sell, whole bag
+    gross native leg (wei)         484999999999999998
+    received (wei)                 470450000000000000
+    hook -> Programmable (wei)     1454999999999999
+    hook -> project vault (wei)    13094999999999999
+    router transfer to treasury    0
+    gas                            233826
+  bare PoolManager router: buy 0.5 ETH -> Programmable 1500000000000000
+  bare PoolManager router: sell -> Programmable        1455000000000000
+    (sell received)                                      470449999999999998
 
-Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 77.71ms (104.17ms CPU time)
+[PASS] test_5_permissionless_claim_pays_treasury() (gas: 1695328)
+Logs:
+  claim by an unrelated address: paid to treasury (wei) 472499999999999
 
-Ran 1 test suite in 83.89ms (77.71ms CPU time): 5 tests passed, 0 failed, 0 skipped (5 total tests)
+[PASS] test_6_contrast_routed_mode_would_double_charge() (gas: 699352)
+Logs:
+  contrast: programmable_routed calldata (not requested), buy 0.05 ETH
+    gross native leg (wei)         49850000000000000
+    received (wei)                 21817980136936889759781104
+    hook -> Programmable (wei)     149550000000000
+    hook -> project vault (wei)    2342950000000000
+    router transfer to treasury    150000000000000
+    gas                            258935
+
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 9.24ms (11.60ms CPU time)
+
+Ran 1 test suite in 20.02ms (9.24ms CPU time): 7 tests passed, 0 failed, 0 skipped (7 total tests)
